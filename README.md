@@ -1,96 +1,72 @@
 # SO101_Sim
 
-<a href="#"><img alt="A banner with the title: SO101_Sim" src="media/banner.png" width="100%"></a>
+SO101_Sim is a MuJoCo simulation environment for the SO-101 robot arm.
 
-SO101_Sim is a python library that defines the sim environment for the SO100/SO101 robotic arm.
-It includes a collection of tasks for robot learning and evaluation.
+## Tested Setup
+
+- WSL2 Ubuntu 24.04
+- Python 3.11
+- Conda environment
 
 ## Installation
 
-Install with pip:
-
 ```bash
-# create a virtual environment and pip install
+# Clone repository
+git clone https://github.com/ramkumarkoppu/so101_sim.git
+cd so101_sim
+
+# Create conda environment
+conda create -n so101-env python=3.11
+conda activate so101-env
+
+# Install dependencies
 pip install -e .
+pip install pygame
 ```
 
-**Note:** The `safari-sdk` dependency is commented out in `requirements.txt` for macOS compatibility.
+## WSL Viewer
 
-**OR** run directly with uv:
+Since MuJoCo's native viewer doesn't work on WSL, use the included pygame viewer:
 
 ```bash
-pip install uv
-uv run <script>.py
+python so101_front_view_safe.py
 ```
 
-Tell mujoco which backend to use, otherwise the simulation will be very slow
+### Files
+- `mujoco_viewer_wrapper.py` - Intercepts MuJoCo viewer calls
+- `so101_front_view_safe.py` - Pygame-based viewer (640x480 rendered, 1280x960 displayed)
 
-```bash
-export MUJOCO_GL='egl'
+### Controls
+- **Arrow Keys**: Base rotation (←/→), Shoulder (↑/↓)
+- **Q/A**: Elbow
+- **W/S**: Wrist pitch
+- **E/D**: Wrist roll
+- **R/F**: Gripper
+- **1-5**: Camera views
+- **Space**: Reset joints
+- **ESC**: Exit
+
+### Usage in Scripts
+
+```python
+import mujoco_viewer_wrapper  # Import first!
+import mujoco
+from so101_sim import task_suite
+
+env = task_suite.create_task_env(
+    task_name='SO100HandOverBanana',
+    time_limit=120.0,
+    cameras=(),
+    image_observation_enabled=False,
+)
+
+timestep = env.reset()
+physics = env._physics
+mujoco.viewer.launch(physics.model.ptr, physics.data.ptr)
 ```
 
-## Reinforcement Learning
+## Notes
 
-This repository includes a collection of tasks for robot learning and evaluation. You can use the provided `so101_rl.ipynb` notebook to get started with training your own reinforcement learning agents.
-
-### LeRobot Integration
-
-The `so101_il_lerobot_format.ipynb` notebook demonstrates how to use the `SO101LeRobotWrapper` to interface with the environment in a format that is compatible with the [LeRobot](https://github.com/huggingface/lerobot) library.
-
-## Viewer
-
-Interact with the scene without a policy:
-
-```bash
-python so101_sim/viewer.py
-```
-
-## Tests
-
-```bash
-# individual tests
-python so101_sim/tasks/test/hand_over_test.py
-...
-
-# all tests
-python -m unittest discover so101_sim/tasks/test '*_test.py'
-```
-
-
-## Tips
-
-- If the environment stepping is very slow, check that you are using the right
-backend, e.g. `MUJOCO_GL='egl'`
-- Tasks with deformable objects like `DesktopWrapHeadphone` and
-`TowelFoldInHalf` are slow to simulate and interact directly with `viewer.py`.
-
-## Automated LeRobot Dataset Generation
-
-This script allows you to automatically generate demonstration data for imitation learning in the LeRobot format. It simulates "banana pick and place" tasks, including both successful and recovery episodes.
-
-### Usage
-
-1.  **Ensure Dependencies:** Make sure you have `uv` installed and `MUJOCO_GL` environment variable set as described in the [Installation](#installation) section.
-
-2.  **Run the Generator:**
-    To generate a dataset, execute the script from the project root:
-
-    ```bash
-    python examples/automated_lerobot_dataset_generator.py
-    ```
-
-3.  **Configuration:**
-    You can customize the data generation process by modifying the `DatasetConfig` class within `examples/automated_lerobot_dataset_generator.py`. Key parameters include:
-    *   `num_episodes`: Number of successful main episodes to generate.
-    *   `max_episode_length`: Maximum number of steps per episode.
-    *   `enable_failure_recovery`: Set to `True` to enable recovery attempts for failed episodes.
-    *   `recovery_attempts`: Number of recovery attempts for each failed main episode.
-
-4.  **Output:**
-    The generated dataset will be saved as a `.pt` file (e.g., `so101_lerobot_dataset_YYYYMMDD_HHMMSS.pt`) in the current working directory.
-
-### For Imitation Learning with LeRobot
-
-The generated `.pt` file contains episodes formatted for use with the LeRobot library. You can load this dataset and use it to train imitation learning models. Refer to the `so101_il_lerobot_format.ipynb` notebook for an example of how to work with the `SO101LeRobotWrapper` and the expected data format.
-
-
+- Framebuffer limited to 640x480 on WSL
+- The viewer wrapper automatically sets osmesa rendering
+- Viewer runs at 30 FPS
